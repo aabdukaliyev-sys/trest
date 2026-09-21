@@ -1,0 +1,3 @@
+date,instrument,amount,currency,fx_rate_to_kzt,foreign_tax_withheld,kase_official_list,holding_period_years
+2024-09-01,AAPL,20,USD,460,3,FALSE,1
+2024-07-01,KZTK,50000,KZT,1,0,TRUE,4
