@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Конструктор ликвидности (РК)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <nav class="tool-nav">
+    <a href="{{ url_for('index') }}">← Налог инвестора (ИПН)</a>
+    <span class="tool-nav-current">Конструктор ликвидности (КПН)</span>
+  </nav>
+  <h1>Конструктор портфеля короткой ликвидности (Казахстан)</h1>
+  <p class="disclaimer">
+    Сценарная модель для юрлица, размещающего свободные деньги на короткий срок через
+    брокера (РЕПО, ноты НБРК/ГЦБ, короткие корпоративные облигации). Доходности не
+    гарантируются и зависят от рынка и доступности инструментов у брокера в момент сделки.
+  </p>
+
+  {% if errors %}
+  <div class="errors">
+    <strong>Не удалось построить отчёт:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('liquidity_report') }}">
+
+    <section>
+      <h2>1. Входные данные</h2>
+      <table class="entry-table">
+        <tbody>
+          <tr><td>Сумма размещения, ₸</td><td><input type="text" name="amount" inputmode="decimal" value="{{ values.amount }}"></td></tr>
+          <tr><td>Срок, дней</td><td><input type="text" name="term_days" inputmode="decimal" value="{{ values.term_days }}"></td></tr>
+          <tr><td>Ставка КПН на доход, %</td><td><input type="text" name="kpn_rate" inputmode="decimal" value="{{ values.kpn_rate }}"></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>2. Конструктор портфеля (доли, %)</h2>
+      <p class="hint">Сумма долей должна быть ≤ 100% — остаток автоматически считается неразмещённым кэшем.</p>
+      <table class="entry-table">
+        <thead><tr><th>Инструмент</th><th>Доля, %</th></tr></thead>
+        <tbody>
+          <tr><td>РЕПО (короткая ликвидность, плавающая ставка)</td><td><input type="text" name="share_repo" inputmode="decimal" value="{{ values.share_repo }}"></td></tr>
+          <tr><td>Ноты НБРК / ГЦБ (гос. инструменты денежного рынка)</td><td><input type="text" name="share_notes" inputmode="decimal" value="{{ values.share_notes }}"></td></tr>
+          <tr><td>Краткосрочные корп. облигации (повышенный риск)</td><td><input type="text" name="share_corp" inputmode="decimal" value="{{ values.share_corp }}"></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>3. Параметры трейдера</h2>
+      <p class="hint">Заполняет трейдер брокера: базовая годовая доходность и коэффициенты влияния срока на доходность.</p>
+      <table class="entry-table">
+        <thead><tr><th>Инструмент</th><th>Базовая доходность, % годовых</th></tr></thead>
+        <tbody>
+          <tr><td>РЕПО</td><td><input type="text" name="base_repo" inputmode="decimal" value="{{ values.base_repo }}"></td></tr>
+          <tr><td>Ноты НБРК / ГЦБ</td><td><input type="text" name="base_notes" inputmode="decimal" value="{{ values.base_notes }}"></td></tr>
+          <tr><td>Корп. облигации (короткие)</td><td><input type="text" name="base_corp" inputmode="decimal" value="{{ values.base_corp }}"></td></tr>
+        </tbody>
+      </table>
+
+      <p class="hint">
+        Коэффициенты по сроку: применяется коэффициент строки с наибольшей границей,
+        не превышающей заданный срок (как <code>LOOKUP</code> в Excel).
+      </p>
+      <div class="table-scroll">
+        <table class="entry-table">
+          <thead><tr><th>Граница срока, дней</th><th>РЕПО</th><th>Ноты НБРК/ГЦБ</th><th>Корп. облигации</th></tr></thead>
+          <tbody>
+            {% for i in range(values.boundaries|length) %}
+            <tr>
+              <td><input type="text" name="boundary" inputmode="decimal" value="{{ values.boundaries[i] }}"></td>
+              <td><input type="text" name="coef_repo" inputmode="decimal" value="{{ values.coef_repo[i] }}"></td>
+              <td><input type="text" name="coef_notes" inputmode="decimal" value="{{ values.coef_notes[i] }}"></td>
+              <td><input type="text" name="coef_corp" inputmode="decimal" value="{{ values.coef_corp[i] }}"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <button type="submit" class="primary">Рассчитать</button>
+  </form>
+</div>
+</body>
+</html>

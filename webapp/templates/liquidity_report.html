@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Отчёт — конструктор ликвидности</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <nav class="tool-nav">
+    <a href="{{ url_for('index') }}">Налог инвестора (ИПН)</a>
+    <a href="{{ url_for('liquidity_index') }}">← Новый расчёт ликвидности</a>
+  </nav>
+  <h1>Отчёт по портфелю короткой ликвидности</h1>
+
+  <section>
+    <h2>Вводные</h2>
+    <div class="cards">
+      <div class="card"><span>Сумма размещения</span><strong>{{ "%.2f"|format(portfolio.amount_kzt) }} ₸</strong></div>
+      <div class="card"><span>Срок</span><strong>{{ portfolio.term_days }} дн.</strong></div>
+      <div class="card"><span>Ставка КПН</span><strong>{{ portfolio.kpn_rate_percent }}%</strong></div>
+      <div class="card"><span>Неразмещённый остаток</span><strong>{{ portfolio.cash_share_percent }}% = {{ "%.2f"|format(result.cash_amount_kzt) }} ₸</strong></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>По инструментам</h2>
+    <div class="table-scroll">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Инструмент</th><th class="num">Доля, %</th><th class="num">Сумма, ₸</th>
+            <th class="num">База, % год.</th><th class="num">Коэф. срока</th>
+            <th class="num">Эфф. ставка, % год.</th><th class="num">Чистый доход, ₸</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in result.instruments %}
+          <tr class="{{ 'positive' if r.net_income_kzt >= 0 else 'negative' }}">
+            <td>{{ instrument_label(r.instrument) }}</td>
+            <td class="num">{{ r.share_percent }}</td>
+            <td class="num">{{ "%.2f"|format(r.amount_kzt) }}</td>
+            <td class="num">{{ r.base_yield_percent }}</td>
+            <td class="num">{{ r.term_coefficient }}</td>
+            <td class="num">{{ r.effective_annual_rate_percent }}</td>
+            <td class="num">{{ "%.2f"|format(r.net_income_kzt) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Итог</h2>
+    <div class="cards">
+      <div class="card"><span>Чистый доход (after-tax)</span><strong>{{ "%.2f"|format(result.total_net_income_kzt) }} ₸</strong></div>
+      <div class="card total"><span>Итоговая сумма</span><strong>{{ "%.2f"|format(result.final_amount_kzt) }} ₸</strong></div>
+      <div class="card"><span>Доходность за период</span><strong>{{ "%.4f"|format(result.period_return_after_tax * 100) }}%</strong></div>
+      <div class="card total"><span>Годовая эквивалентная доходность</span><strong>{{ "%.4f"|format(result.annualized_return_after_tax * 100) }}%</strong></div>
+    </div>
+
+    {% if result.notes %}
+    <h3>Примечания</h3>
+    <ul class="notes">{% for n in result.notes %}<li>{{ n }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  <p class="disclaimer">
+    DISCLAIMER: это сценарная модель для демонстрации, а не гарантированная доходность и не
+    официальная налоговая консультация. Базовые ставки и коэффициенты задаёт трейдер брокера
+    и их нужно сверять с текущими рыночными условиями перед фактическим размещением средств.
+  </p>
+</div>
+</body>
+</html>

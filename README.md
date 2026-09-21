@@ -1,16 +1,22 @@
-# Tax optimization calculator (Kazakhstan, broker investments)
+# Tax optimization calculators (Kazakhstan, broker services)
 
-A CLI calculator that takes an individual investor's trade and dividend
-history from a broker, computes Kazakhstan individual income tax (ИПН) on
-realized gains and dividends, and suggests legal tax-optimization moves
-(tax-loss harvesting, KASE listing-exemption reminders, cost-basis method
-comparison).
+Two independent calculators for tax-aware use of a broker in Kazakhstan:
 
-**Not certified tax advice.** See `docs/TAX_RULES_KZ.md` for the exact rules
-and assumptions this tool encodes, and confirm results with your broker's tax
-desk or a licensed tax consultant before filing anything.
+1. **`tax_optimizer/`** — an individual investor's ИПН (personal income tax)
+   on capital gains and dividends from trading securities through a broker.
+2. **`liquidity_optimizer/`** — a legal entity's after-tax (КПН — corporate
+   income tax) return on placing short-term cash through a broker across
+   REPO, National Bank notes/government securities, and short corporate
+   bonds, given trader-supplied yield assumptions.
 
-## Quick start (CLI)
+Each has its own CLI and its own page in the shared Flask web UI (see
+`webapp/`) — pick whichever matches your situation.
+
+**Not certified tax or investment advice.** See `docs/TAX_RULES_KZ.md` for
+the ИПН assumptions, and confirm any result with your broker's desk or a
+licensed tax consultant before acting on it.
+
+## Investor tax calculator — quick start (CLI)
 
 ```bash
 python3 -m tax_optimizer report \
@@ -23,6 +29,17 @@ Only `--trades` is required; `--dividends` and `--prices` are optional
 (`--prices` unlocks the optimization suggestions section, since harvesting
 needs current market values).
 
+## Liquidity portfolio calculator — quick start (CLI)
+
+```bash
+python3 -m liquidity_optimizer report \
+  --amount 100000000 --term-days 14 --kpn-rate 20 --repo 70 --notes 30
+```
+
+Defaults for trader parameters (base yields and term coefficients) live in
+`liquidity_optimizer/models.py::DEFAULT_TRADER_PARAMS`; the web UI lets a
+trader override them per calculation instead of editing code.
+
 ## Web UI
 
 ```bash
@@ -30,13 +47,17 @@ pip install -r requirements.txt
 python3 -m webapp.app
 ```
 
-Open http://127.0.0.1:5000/. You can either fill in trades/dividends/prices
-row by row (with add/remove-row buttons) or upload the same CSV files the CLI
-uses — a file, if selected, takes priority over that section's manual rows.
-The web app calls the exact same `tax_optimizer` package as the CLI; no
-calculation logic is duplicated in `webapp/`.
+Open http://127.0.0.1:5000/ for the investor ИПН calculator, or
+http://127.0.0.1:5000/liquidity for the liquidity portfolio calculator (a nav
+link at the top of each page switches between them).
 
-## Input format
+On the investor calculator you can either fill in trades/dividends/prices row
+by row (with add/remove-row buttons) or upload the same CSV files the CLI
+uses — a file, if selected, takes priority over that section's manual rows.
+The web app calls the exact same `tax_optimizer` / `liquidity_optimizer`
+packages as their CLIs; no calculation logic is duplicated in `webapp/`.
+
+## Input format (investor ИПН calculator)
 
 See the docstring in `tax_optimizer/io_csv.py` for the exact CSV columns.
 In short:
@@ -51,7 +72,7 @@ In short:
 - `prices.csv`: current price **in KZT** per instrument, used only for the
   optimizer's tax-loss-harvesting suggestions.
 
-## What it computes
+## What the investor calculator computes
 
 1. **FIFO cost-basis matching** (`tax_optimizer/fifo_engine.py`) turns your
    trade history into realized gains/losses and remaining open positions.
@@ -67,11 +88,21 @@ In short:
    - a side-by-side comparison of the tax impact of FIFO vs LIFO vs HIFO cost
      basis, useful context when discussing lot selection with your broker.
 
+## What the liquidity calculator computes (`liquidity_optimizer/calculator.py`)
+
+For each instrument: `amount = total × share%`, `effective annual rate =
+base yield% × term coefficient`, `net income = amount × (effective rate /
+100) × (term_days / 365) × (1 − KPN% / 100)`. The term coefficient is looked
+up the same way Excel's `LOOKUP` does it: the coefficient at the largest
+table boundary that is ≤ the requested term. Totals give the after-tax net
+income, final amount, and annualized equivalent yield.
+
 ## Running the tests
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-No third-party dependencies are required -- everything uses the Python
-standard library (`csv`, `dataclasses`, `decimal`, `argparse`).
+The calculators themselves use only the Python standard library (`csv`,
+`dataclasses`, `decimal`, `argparse`); `flask` (see `requirements.txt`) is
+needed only to run the web UI.

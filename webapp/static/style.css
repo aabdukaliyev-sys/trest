@@ -33,6 +33,19 @@ a { color: var(--accent); }
 
 .hint { color: var(--muted); font-size: 0.9rem; }
 
+.tool-nav {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.tool-nav-current { color: var(--muted); }
+.tool-nav a { color: var(--accent); text-decoration: none; }
+.tool-nav a:hover { text-decoration: underline; }
+
 .disclaimer {
   background: rgba(56, 189, 248, 0.08);
   border: 1px solid var(--border);
