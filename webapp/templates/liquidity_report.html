@@ -67,6 +67,32 @@
     {% endif %}
   </section>
 
+  {% if result.deposit %}
+  <section>
+    <h2>Сравнение с банковским депозитом ({{ result.deposit.deposit_rate_percent }}% годовых)</h2>
+    <div class="cards">
+      <div class="card"><span>Чистый доход по депозиту</span><strong>{{ "%.2f"|format(result.deposit.net_income_kzt) }} ₸</strong></div>
+      <div class="card"><span>Итоговая сумма по депозиту</span><strong>{{ "%.2f"|format(result.deposit.final_amount_kzt) }} ₸</strong></div>
+      <div class="card"><span>Годовая доходность депозита</span><strong>{{ "%.4f"|format(result.deposit.annualized_return_after_tax * 100) }}%</strong></div>
+      <div class="card {{ 'total' if result.deposit.advantage_net_income_kzt >= 0 else '' }}">
+        <span>Выигрыш портфеля брокера</span>
+        <strong style="color: {{ 'var(--positive)' if result.deposit.advantage_net_income_kzt >= 0 else 'var(--negative)' }}">
+          {{ "%+.2f"|format(result.deposit.advantage_net_income_kzt) }} ₸
+          ({{ "%+.4f"|format(result.deposit.advantage_annualized_pp * 100) }} п.п. годовых)
+        </strong>
+      </div>
+    </div>
+    <p class="hint">
+      {% if result.deposit.advantage_net_income_kzt >= 0 %}
+      Портфель брокера выгоднее депозита при этих ставках и сроке.
+      {% else %}
+      При этих ставках обычный депозит выгоднее портфеля брокера — стоит пересмотреть доли
+      или уточнить у трейдера более актуальные ставки.
+      {% endif %}
+    </p>
+  </section>
+  {% endif %}
+
   <p class="disclaimer">
     DISCLAIMER: это сценарная модель для демонстрации, а не гарантированная доходность и не
     официальная налоговая консультация. Базовые ставки и коэффициенты задаёт трейдер брокера

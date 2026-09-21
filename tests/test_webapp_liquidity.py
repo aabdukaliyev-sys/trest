@@ -37,6 +37,50 @@ class LiquidityWebAppTests(unittest.TestCase):
         self.assertIn("402432.88".encode(), resp.data)
         self.assertIn("11.03".encode(), resp.data)
 
+    def test_liquidity_report_shows_deposit_comparison(self):
+        form = {
+            "amount": "100000000",
+            "term_days": "14",
+            "kpn_rate": "20",
+            "share_repo": "70",
+            "share_notes": "30",
+            "share_corp": "0",
+            "deposit_rate": "12",
+            "base_repo": "14",
+            "base_notes": "13",
+            "base_corp": "17",
+            "boundary": ["1", "7", "30", "90", "180", "365"],
+            "coef_repo": ["1", "1", "0.95", "0.85", "0.7", "0.6"],
+            "coef_notes": ["0.6", "0.85", "1", "0.95", "0.8", "0.7"],
+            "coef_corp": ["0.3", "0.5", "0.7", "0.85", "1", "1"],
+        }
+        resp = self.client.post("/liquidity/report", data=form)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Сравнение с банковским депозитом".encode(), resp.data)
+        self.assertIn("368219.18".encode(), resp.data)  # deposit net income
+        self.assertIn("+34213.70".encode(), resp.data)  # advantage over deposit
+
+    def test_liquidity_report_omits_deposit_comparison_when_blank(self):
+        form = {
+            "amount": "1000000",
+            "term_days": "30",
+            "kpn_rate": "20",
+            "share_repo": "100",
+            "share_notes": "0",
+            "share_corp": "0",
+            "deposit_rate": "",
+            "base_repo": "14",
+            "base_notes": "13",
+            "base_corp": "17",
+            "boundary": ["1", "7", "30", "90", "180", "365"],
+            "coef_repo": ["1", "1", "0.95", "0.85", "0.7", "0.6"],
+            "coef_notes": ["0.6", "0.85", "1", "0.95", "0.8", "0.7"],
+            "coef_corp": ["0.3", "0.5", "0.7", "0.85", "1", "1"],
+        }
+        resp = self.client.post("/liquidity/report", data=form)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("Сравнение с банковским депозитом".encode(), resp.data)
+
     def test_liquidity_report_rejects_shares_over_100(self):
         form = {
             "amount": "1000000",

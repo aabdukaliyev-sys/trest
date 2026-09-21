@@ -14,7 +14,7 @@ from .calculator import compute_portfolio, instrument_label
 from .models import CORP_BONDS, DEFAULT_TRADER_PARAMS, NOTES, REPO, PortfolioInput
 
 
-def _print_report(amount, term_days, kpn_rate, repo, notes, corp_bonds) -> None:
+def _print_report(amount, term_days, kpn_rate, repo, notes, corp_bonds, deposit_rate) -> None:
     portfolio = PortfolioInput(
         amount_kzt=Decimal(str(amount)),
         term_days=Decimal(str(term_days)),
@@ -24,6 +24,7 @@ def _print_report(amount, term_days, kpn_rate, repo, notes, corp_bonds) -> None:
             NOTES: Decimal(str(notes)),
             CORP_BONDS: Decimal(str(corp_bonds)),
         },
+        deposit_rate_percent=Decimal(str(deposit_rate)) if deposit_rate is not None else None,
     )
     result = compute_portfolio(portfolio, DEFAULT_TRADER_PARAMS)
 
@@ -45,6 +46,15 @@ def _print_report(amount, term_days, kpn_rate, repo, notes, corp_bonds) -> None:
     print(f"Доходность за период (after-tax): {result.period_return_after_tax * 100:.4f}%")
     print(f"Годовая эквивалентная доходность (after-tax): {result.annualized_return_after_tax * 100:.4f}%")
 
+    if result.deposit:
+        d = result.deposit
+        print(f"\n=== Сравнение с банковским депозитом ({d.deposit_rate_percent}% годовых) ===")
+        print(f"Чистый доход по депозиту: {d.net_income_kzt:.2f} KZT")
+        print(f"Итоговая сумма по депозиту: {d.final_amount_kzt:.2f} KZT")
+        print(f"Годовая эквивалентная доходность депозита (after-tax): {d.annualized_return_after_tax * 100:.4f}%")
+        sign = "+" if d.advantage_net_income_kzt >= 0 else ""
+        print(f"Выигрыш портфеля брокера: {sign}{d.advantage_net_income_kzt:.2f} KZT ({sign}{d.advantage_annualized_pp * 100:.4f} п.п. годовых)")
+
     if result.notes:
         print("\n--- Примечания ---")
         for n in result.notes:
@@ -62,10 +72,17 @@ def main() -> None:
     report_parser.add_argument("--repo", default="0", type=str, help="Доля РЕПО, %")
     report_parser.add_argument("--notes", default="0", type=str, help="Доля нот НБРК/ГЦБ, %")
     report_parser.add_argument("--corp-bonds", default="0", type=str, help="Доля корп. облигаций, %")
+    report_parser.add_argument(
+        "--deposit-rate", default=None, type=str,
+        help="Ставка банковского депозита для сравнения, %% годовых (опционально)",
+    )
 
     args = parser.parse_args()
     if args.command == "report":
-        _print_report(args.amount, args.term_days, args.kpn_rate, args.repo, args.notes, args.corp_bonds)
+        _print_report(
+            args.amount, args.term_days, args.kpn_rate,
+            args.repo, args.notes, args.corp_bonds, args.deposit_rate,
+        )
 
 
 if __name__ == "__main__":

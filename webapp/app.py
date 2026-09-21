@@ -212,6 +212,7 @@ def _liquidity_defaults() -> dict:
         "share_repo": "70",
         "share_notes": "30",
         "share_corp": "0",
+        "deposit_rate": "12",
         "base_repo": str(DEFAULT_TRADER_PARAMS.base_annual_yield_percent[REPO]),
         "base_notes": str(DEFAULT_TRADER_PARAMS.base_annual_yield_percent[NOTES]),
         "base_corp": str(DEFAULT_TRADER_PARAMS.base_annual_yield_percent[CORP_BONDS]),
@@ -242,6 +243,7 @@ def _read_liquidity_form(form) -> tuple[PortfolioInput, TraderParams, dict]:
         "share_repo": form.get("share_repo", "0"),
         "share_notes": form.get("share_notes", "0"),
         "share_corp": form.get("share_corp", "0"),
+        "deposit_rate": form.get("deposit_rate", ""),
         "base_repo": form.get("base_repo", ""),
         "base_notes": form.get("base_notes", ""),
         "base_corp": form.get("base_corp", ""),
@@ -260,6 +262,11 @@ def _read_liquidity_form(form) -> tuple[PortfolioInput, TraderParams, dict]:
             NOTES: _liquidity_decimal(values["share_notes"], "Доля нот НБРК/ГЦБ", Decimal("0")),
             CORP_BONDS: _liquidity_decimal(values["share_corp"], "Доля корп. облигаций", Decimal("0")),
         },
+        deposit_rate_percent=(
+            _liquidity_decimal(values["deposit_rate"], "Ставка депозита")
+            if values["deposit_rate"].strip()
+            else None
+        ),
     )
 
     boundaries = [_liquidity_decimal(b, "граница срока") for b in values["boundaries"]]

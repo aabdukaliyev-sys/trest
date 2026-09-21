@@ -113,6 +113,59 @@ class LiquidityCalculatorTests(unittest.TestCase):
         self.assertEqual(table.coefficient_for(REPO, D(30)), D("0.95"))
         self.assertEqual(table.coefficient_for(REPO, D(1000)), D("0.6"))
 
+    def test_deposit_comparison_none_when_rate_not_given(self):
+        portfolio = PortfolioInput(
+            amount_kzt=D(1_000_000),
+            term_days=D(30),
+            kpn_rate_percent=D(20),
+            shares_percent={REPO: D(100)},
+        )
+        result = compute_portfolio(portfolio, DEFAULT_TRADER_PARAMS)
+        self.assertIsNone(result.deposit)
+
+    def test_deposit_comparison_matches_manual_calc(self):
+        portfolio = PortfolioInput(
+            amount_kzt=D(100_000_000),
+            term_days=D(14),
+            kpn_rate_percent=D(20),
+            shares_percent={REPO: D(70), NOTES: D(30), CORP_BONDS: D(0)},
+            deposit_rate_percent=D(12),
+        )
+        result = compute_portfolio(portfolio, DEFAULT_TRADER_PARAMS)
+        deposit = result.deposit
+        self.assertIsNotNone(deposit)
+
+        expected_income = D(100_000_000) * D("0.12") * (D(14) / D(365)) * D("0.8")
+        self.assertAlmostEqual(float(deposit.net_income_kzt), float(expected_income), places=6)
+        self.assertAlmostEqual(
+            float(deposit.final_amount_kzt), float(D(100_000_000) + expected_income), places=6
+        )
+        self.assertAlmostEqual(
+            float(deposit.advantage_net_income_kzt),
+            float(result.total_net_income_kzt - deposit.net_income_kzt),
+            places=6,
+        )
+        self.assertAlmostEqual(
+            float(deposit.advantage_annualized_pp),
+            float(result.annualized_return_after_tax - deposit.annualized_return_after_tax),
+            places=8,
+        )
+        # portfolio's blended base yield (14%/13%) beats a 12% deposit
+        self.assertGreater(deposit.advantage_net_income_kzt, D(0))
+        self.assertGreater(deposit.advantage_annualized_pp, D(0))
+
+    def test_deposit_better_than_portfolio_shows_negative_advantage(self):
+        portfolio = PortfolioInput(
+            amount_kzt=D(1_000_000),
+            term_days=D(30),
+            kpn_rate_percent=D(20),
+            shares_percent={REPO: D(100)},
+            deposit_rate_percent=D(50),  # unrealistically high, just to flip the sign
+        )
+        result = compute_portfolio(portfolio, DEFAULT_TRADER_PARAMS)
+        self.assertLess(result.deposit.advantage_net_income_kzt, D(0))
+        self.assertLess(result.deposit.advantage_annualized_pp, D(0))
+
     def test_custom_trader_params_are_used(self):
         custom = TraderParams(
             base_annual_yield_percent={REPO: D(20), NOTES: D(10), CORP_BONDS: D(15)},

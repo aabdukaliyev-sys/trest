@@ -33,6 +33,7 @@ class PortfolioInput:
     term_days: Decimal
     kpn_rate_percent: Decimal
     shares_percent: dict[str, Decimal]  # instrument -> % of amount_kzt, need not fill CORP_BONDS etc if 0
+    deposit_rate_percent: Decimal | None = None  # bank deposit rate to compare against, % per annum
 
     def __post_init__(self) -> None:
         if self.amount_kzt < 0:
@@ -118,6 +119,16 @@ class InstrumentResult:
 
 
 @dataclass
+class DepositComparison:
+    deposit_rate_percent: Decimal
+    net_income_kzt: Decimal
+    final_amount_kzt: Decimal
+    annualized_return_after_tax: Decimal  # fraction
+    advantage_net_income_kzt: Decimal  # portfolio net income minus deposit net income
+    advantage_annualized_pp: Decimal  # portfolio annualized minus deposit annualized, fraction (e.g. 0.02 = +2 п.п.)
+
+
+@dataclass
 class PortfolioResult:
     term_years: Decimal
     instruments: list[InstrumentResult]
@@ -127,3 +138,4 @@ class PortfolioResult:
     period_return_after_tax: Decimal  # fraction, e.g. 0.004 = 0.4%
     annualized_return_after_tax: Decimal  # fraction
     notes: list[str] = field(default_factory=list)
+    deposit: DepositComparison | None = None

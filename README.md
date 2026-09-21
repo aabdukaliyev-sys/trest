@@ -97,6 +97,15 @@ up the same way Excel's `LOOKUP` does it: the coefficient at the largest
 table boundary that is ≤ the requested term. Totals give the after-tax net
 income, final amount, and annualized equivalent yield.
 
+Optionally pass a bank deposit rate (`--deposit-rate` on the CLI, or the
+"Ставка депозита банка" field in the web UI) to compare against: the same
+lump sum and term, taxed at the same КПН rate, gives a baseline net income,
+final amount and annualized yield, plus the broker portfolio's advantage
+(or disadvantage) over it in both KZT and annualized percentage points.
+This is a simplifying assumption -- some deposit or government-instrument
+interest may carry a different tax treatment, so confirm with your bank/tax
+advisor for your specific instrument.
+
 ## Running the tests
 
 ```bash
