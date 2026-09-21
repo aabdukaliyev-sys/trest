@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Отчёт — калькулятор налоговой оптимизации</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <h1>Отчёт по налогам и оптимизации</h1>
+  <p><a href="{{ url_for('index') }}">← Новый расчёт</a></p>
+
+  <section>
+    <h2>Реализованные прибыли/убытки (FIFO)</h2>
+    {% if realized %}
+    <table class="report-table">
+      <thead><tr><th>Дата закрытия</th><th>Инструмент</th><th>Кол-во</th><th>Результат, KZT</th><th>KASE льгота</th></tr></thead>
+      <tbody>
+      {% for g in realized %}
+        <tr class="{{ 'positive' if g.gain_kzt >= 0 else 'negative' }}">
+          <td>{{ g.close_date }}</td>
+          <td>{{ g.instrument }}</td>
+          <td>{{ g.quantity }}</td>
+          <td>{{ "%.2f"|format(g.gain_kzt) }}</td>
+          <td>{{ "Да" if g.kase_official_list else "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="hint">Нет закрытых сделок за период.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Открытые позиции</h2>
+    {% if open_positions %}
+    <table class="report-table">
+      <thead><tr><th>Инструмент</th><th>Кол-во</th><th>Себестоимость, KZT</th><th>KASE льгота</th></tr></thead>
+      <tbody>
+      {% for instrument, pos in open_positions.items() %}
+        <tr>
+          <td>{{ instrument }}</td>
+          <td>{{ pos.quantity }}</td>
+          <td>{{ "%.2f"|format(pos.cost_basis_kzt) }}</td>
+          <td>{{ "Да" if pos.kase_official_list else "—" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="hint">Нет открытых позиций.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Налог (ИПН, 10%)</h2>
+    <div class="cards">
+      <div class="card"><span>Налогооблагаемая прибыль</span><strong>{{ "%.2f"|format(tax_report.taxable_gain_kzt) }} KZT</strong></div>
+      <div class="card"><span>Налог с прибыли</span><strong>{{ "%.2f"|format(tax_report.gain_tax_kzt) }} KZT</strong></div>
+      <div class="card"><span>Льготная (KASE) прибыль</span><strong>{{ "%.2f"|format(tax_report.exempt_gain_kzt) }} KZT</strong></div>
+      <div class="card"><span>Налогооблагаемые дивиденды</span><strong>{{ "%.2f"|format(tax_report.taxable_dividend_kzt) }} KZT</strong></div>
+      <div class="card"><span>Налог с дивидендов</span><strong>{{ "%.2f"|format(tax_report.dividend_tax_kzt) }} KZT</strong></div>
+      <div class="card"><span>Зачёт иностранного налога</span><strong>{{ "%.2f"|format(tax_report.foreign_tax_credit_kzt) }} KZT</strong></div>
+      <div class="card"><span>Льготные дивиденды</span><strong>{{ "%.2f"|format(tax_report.exempt_dividend_kzt) }} KZT</strong></div>
+      <div class="card total"><span>ИТОГО К УПЛАТЕ</span><strong>{{ "%.2f"|format(tax_report.total_tax_kzt) }} KZT</strong></div>
+    </div>
+
+    {% if tax_report.notes %}
+    <h3>Примечания</h3>
+    <ul class="notes">
+      {% for n in tax_report.notes %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  {% if opt %}
+  <section>
+    <h2>Рекомендации по оптимизации</h2>
+
+    {% if opt.harvest_suggestions %}
+    <h3>Кандидаты для tax-loss harvesting</h3>
+    <table class="report-table">
+      <thead><tr><th>Инструмент</th><th>Кол-во</th><th>Текущая цена, KZT</th><th>Убыток к реализации, KZT</th></tr></thead>
+      <tbody>
+      {% for h in opt.harvest_suggestions %}
+        <tr>
+          <td>{{ h.instrument }}</td>
+          <td>{{ h.quantity }}</td>
+          <td>{{ h.current_price }}</td>
+          <td>{{ "%.2f"|format(h.unrealized_loss_kzt) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p>Остаток налогооблагаемой прибыли после harvesting: <strong>{{ "%.2f"|format(opt.remaining_taxable_gain_after_harvest_kzt) }} KZT</strong></p>
+    {% else %}
+    <p class="hint">Нет позиций ниже себестоимости, пригодных для harvesting.</p>
+    {% endif %}
+
+    {% if opt.unused_loss_positions %}
+    <h3>Убыточные позиции без текущей налоговой пользы</h3>
+    <p class="hint">Продажа не даст выгоды в этом периоде — уже нет прибыли для зачёта, а перенос убытков на будущие периоды не разрешён.</p>
+    <ul>
+      {% for h in opt.unused_loss_positions %}
+      <li>{{ h.instrument }}: нереализованный убыток {{ "%.2f"|format(h.unrealized_loss_kzt) }} KZT при цене {{ h.current_price }} KZT</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if opt.exemption_reminders %}
+    <h3>Напоминания о льготе KASE</h3>
+    <ul>
+      {% for r in opt.exemption_reminders %}<li>{{ r }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3>Сравнение методов списания себестоимости</h3>
+    <table class="report-table">
+      <thead><tr><th>Метод</th><th>Налогооблагаемая прибыль, KZT</th></tr></thead>
+      <tbody>
+      {% for method, amount in opt.method_comparison_kzt.items() %}
+        <tr><td>{{ method }}</td><td>{{ "%.2f"|format(amount) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <p class="disclaimer">
+    DISCLAIMER: расчёт основан на упрощённой трактовке Налогового кодекса РК
+    (см. <code>docs/TAX_RULES_KZ.md</code>) и не является официальной налоговой консультацией.
+    Проверьте итоговые цифры и обязанности по подаче декларации с брокером или налоговым консультантом.
+  </p>
+</div>
+</body>
+</html>

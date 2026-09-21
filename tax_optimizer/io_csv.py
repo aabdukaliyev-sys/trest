@@ -44,48 +44,62 @@ def _date(value: str) -> date:
     return datetime.strptime(value.strip(), "%Y-%m-%d").date()
 
 
-def load_trades(path: str) -> list[Trade]:
+def parse_trades(fileobj) -> list[Trade]:
+    """Parse trades from an open text file-like object (a real file or an
+    in-memory ``io.StringIO``, e.g. an uploaded file in the web UI)."""
     trades = []
-    with open(path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            trades.append(
-                Trade(
-                    trade_date=_date(row["date"]),
-                    instrument=row["instrument"].strip(),
-                    side=row["side"].strip().upper(),
-                    quantity=_decimal(row["quantity"]),
-                    price=_decimal(row["price"]),
-                    currency=row["currency"].strip().upper(),
-                    commission=_decimal(row.get("commission")),
-                    fx_rate_to_kzt=_decimal(row.get("fx_rate_to_kzt"), default="1"),
-                    kase_official_list=_bool(row.get("kase_official_list")),
-                )
+    for row in csv.DictReader(fileobj):
+        trades.append(
+            Trade(
+                trade_date=_date(row["date"]),
+                instrument=row["instrument"].strip(),
+                side=row["side"].strip().upper(),
+                quantity=_decimal(row["quantity"]),
+                price=_decimal(row["price"]),
+                currency=row["currency"].strip().upper(),
+                commission=_decimal(row.get("commission")),
+                fx_rate_to_kzt=_decimal(row.get("fx_rate_to_kzt"), default="1"),
+                kase_official_list=_bool(row.get("kase_official_list")),
             )
+        )
     return trades
 
 
-def load_dividends(path: str) -> list[Dividend]:
+def parse_dividends(fileobj) -> list[Dividend]:
     dividends = []
-    with open(path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            dividends.append(
-                Dividend(
-                    payment_date=_date(row["date"]),
-                    instrument=row["instrument"].strip(),
-                    amount=_decimal(row["amount"]),
-                    currency=row["currency"].strip().upper(),
-                    fx_rate_to_kzt=_decimal(row.get("fx_rate_to_kzt"), default="1"),
-                    foreign_tax_withheld=_decimal(row.get("foreign_tax_withheld")),
-                    kase_official_list=_bool(row.get("kase_official_list")),
-                    holding_period_years=_decimal(row.get("holding_period_years")),
-                )
+    for row in csv.DictReader(fileobj):
+        dividends.append(
+            Dividend(
+                payment_date=_date(row["date"]),
+                instrument=row["instrument"].strip(),
+                amount=_decimal(row["amount"]),
+                currency=row["currency"].strip().upper(),
+                fx_rate_to_kzt=_decimal(row.get("fx_rate_to_kzt"), default="1"),
+                foreign_tax_withheld=_decimal(row.get("foreign_tax_withheld")),
+                kase_official_list=_bool(row.get("kase_official_list")),
+                holding_period_years=_decimal(row.get("holding_period_years")),
             )
+        )
     return dividends
 
 
-def load_prices(path: str) -> dict[str, Decimal]:
+def parse_prices(fileobj) -> dict[str, Decimal]:
     prices = {}
-    with open(path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            prices[row["instrument"].strip()] = _decimal(row["price"])
+    for row in csv.DictReader(fileobj):
+        prices[row["instrument"].strip()] = _decimal(row["price"])
     return prices
+
+
+def load_trades(path: str) -> list[Trade]:
+    with open(path, newline="", encoding="utf-8") as f:
+        return parse_trades(f)
+
+
+def load_dividends(path: str) -> list[Dividend]:
+    with open(path, newline="", encoding="utf-8") as f:
+        return parse_dividends(f)
+
+
+def load_prices(path: str) -> dict[str, Decimal]:
+    with open(path, newline="", encoding="utf-8") as f:
+        return parse_prices(f)

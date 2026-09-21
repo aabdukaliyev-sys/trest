@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Калькулятор налоговой оптимизации (РК)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="page">
+  <h1>Калькулятор налоговой оптимизации инвестора (Казахстан)</h1>
+  <p class="disclaimer">
+    Это не официальная налоговая консультация. Расчёт основан на упрощённой трактовке
+    Налогового кодекса РК — см. <code>docs/TAX_RULES_KZ.md</code>. Проверяйте итоговые цифры
+    с брокером или налоговым консультантом перед подачей декларации.
+  </p>
+
+  {% if errors %}
+  <div class="errors">
+    <strong>Не удалось построить отчёт:</strong>
+    <ul>
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('report') }}" enctype="multipart/form-data">
+
+    <section>
+      <h2>Сделки (обязательно)</h2>
+      <p class="hint">
+        Заполните таблицу вручную или загрузите CSV — если файл выбран, он используется
+        вместо таблицы. Курс к KZT — курс НБК на дату сделки (для тенговых бумаг оставьте 1).
+      </p>
+      <label class="file-input">Загрузить CSV: <input type="file" name="trades_file" accept=".csv"></label>
+      <table class="entry-table">
+        <thead>
+          <tr>
+            <th>Дата</th><th>Инструмент</th><th>Сторона</th><th>Кол-во</th><th>Цена</th>
+            <th>Валюта</th><th>Комиссия</th><th>Курс к KZT</th><th>KASE список</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="trades-body">
+          {% for row in trade_rows %}
+          <tr>
+            <td><input type="date" name="trade_date" value="{{ row.date or '' }}"></td>
+            <td><input type="text" name="trade_instrument" placeholder="AAPL" value="{{ row.instrument or '' }}"></td>
+            <td>
+              <select name="trade_side">
+                <option value="BUY" {{ 'selected' if row.side == 'BUY' or not row.side else '' }}>Покупка</option>
+                <option value="SELL" {{ 'selected' if row.side == 'SELL' else '' }}>Продажа</option>
+              </select>
+            </td>
+            <td><input type="text" name="trade_quantity" inputmode="decimal" value="{{ row.quantity or '' }}"></td>
+            <td><input type="text" name="trade_price" inputmode="decimal" value="{{ row.price or '' }}"></td>
+            <td><input type="text" name="trade_currency" maxlength="3" value="{{ row.currency or 'KZT' }}"></td>
+            <td><input type="text" name="trade_commission" inputmode="decimal" value="{{ row.commission or '0' }}"></td>
+            <td><input type="text" name="trade_fx" inputmode="decimal" value="{{ row.fx or '1' }}"></td>
+            <td>
+              <select name="trade_kase">
+                <option value="false" {{ 'selected' if row.kase != 'true' else '' }}>Нет</option>
+                <option value="true" {{ 'selected' if row.kase == 'true' else '' }}>Да</option>
+              </select>
+            </td>
+            <td><button type="button" class="remove-row">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="add-row" data-add-row="trades-body">+ Добавить сделку</button>
+      <template id="trades-body-template">
+        <tr>
+          <td><input type="date" name="trade_date"></td>
+          <td><input type="text" name="trade_instrument" placeholder="AAPL"></td>
+          <td>
+            <select name="trade_side">
+              <option value="BUY" selected>Покупка</option>
+              <option value="SELL">Продажа</option>
+            </select>
+          </td>
+          <td><input type="text" name="trade_quantity" inputmode="decimal"></td>
+          <td><input type="text" name="trade_price" inputmode="decimal"></td>
+          <td><input type="text" name="trade_currency" maxlength="3" value="KZT"></td>
+          <td><input type="text" name="trade_commission" inputmode="decimal" value="0"></td>
+          <td><input type="text" name="trade_fx" inputmode="decimal" value="1"></td>
+          <td>
+            <select name="trade_kase">
+              <option value="false" selected>Нет</option>
+              <option value="true">Да</option>
+            </select>
+          </td>
+          <td><button type="button" class="remove-row">✕</button></td>
+        </tr>
+      </template>
+    </section>
+
+    <section>
+      <h2>Дивиденды (опционально)</h2>
+      <label class="file-input">Загрузить CSV: <input type="file" name="dividends_file" accept=".csv"></label>
+      <table class="entry-table">
+        <thead>
+          <tr>
+            <th>Дата</th><th>Инструмент</th><th>Сумма</th><th>Валюта</th><th>Курс к KZT</th>
+            <th>Удержано за рубежом</th><th>KASE список</th><th>Лет владения</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="dividends-body">
+          {% for row in div_rows %}
+          <tr>
+            <td><input type="date" name="div_date" value="{{ row.date or '' }}"></td>
+            <td><input type="text" name="div_instrument" value="{{ row.instrument or '' }}"></td>
+            <td><input type="text" name="div_amount" inputmode="decimal" value="{{ row.amount or '' }}"></td>
+            <td><input type="text" name="div_currency" maxlength="3" value="{{ row.currency or 'KZT' }}"></td>
+            <td><input type="text" name="div_fx" inputmode="decimal" value="{{ row.fx or '1' }}"></td>
+            <td><input type="text" name="div_foreign_tax" inputmode="decimal" value="{{ row.foreign_tax or '0' }}"></td>
+            <td>
+              <select name="div_kase">
+                <option value="false" {{ 'selected' if row.kase != 'true' else '' }}>Нет</option>
+                <option value="true" {{ 'selected' if row.kase == 'true' else '' }}>Да</option>
+              </select>
+            </td>
+            <td><input type="text" name="div_holding_years" inputmode="decimal" value="{{ row.holding_years or '0' }}"></td>
+            <td><button type="button" class="remove-row">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="add-row" data-add-row="dividends-body">+ Добавить дивиденд</button>
+      <template id="dividends-body-template">
+        <tr>
+          <td><input type="date" name="div_date"></td>
+          <td><input type="text" name="div_instrument"></td>
+          <td><input type="text" name="div_amount" inputmode="decimal"></td>
+          <td><input type="text" name="div_currency" maxlength="3" value="KZT"></td>
+          <td><input type="text" name="div_fx" inputmode="decimal" value="1"></td>
+          <td><input type="text" name="div_foreign_tax" inputmode="decimal" value="0"></td>
+          <td>
+            <select name="div_kase">
+              <option value="false" selected>Нет</option>
+              <option value="true">Да</option>
+            </select>
+          </td>
+          <td><input type="text" name="div_holding_years" inputmode="decimal" value="0"></td>
+          <td><button type="button" class="remove-row">✕</button></td>
+        </tr>
+      </template>
+    </section>
+
+    <section>
+      <h2>Текущие цены для оптимизатора (опционально)</h2>
+      <p class="hint">
+        Нужны только для рекомендаций по tax-loss harvesting. Указывайте цену уже в тенге
+        (переведите по текущему курсу НБК).
+      </p>
+      <label class="file-input">Загрузить CSV: <input type="file" name="prices_file" accept=".csv"></label>
+      <table class="entry-table">
+        <thead><tr><th>Инструмент</th><th>Цена, KZT</th><th></th></tr></thead>
+        <tbody id="prices-body">
+          {% for row in price_rows %}
+          <tr>
+            <td><input type="text" name="price_instrument" value="{{ row.instrument or '' }}"></td>
+            <td><input type="text" name="price_value" inputmode="decimal" value="{{ row.value or '' }}"></td>
+            <td><button type="button" class="remove-row">✕</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="button" class="add-row" data-add-row="prices-body">+ Добавить цену</button>
+      <template id="prices-body-template">
+        <tr>
+          <td><input type="text" name="price_instrument"></td>
+          <td><input type="text" name="price_value" inputmode="decimal"></td>
+          <td><button type="button" class="remove-row">✕</button></td>
+        </tr>
+      </template>
+    </section>
+
+    <button type="submit" class="primary">Рассчитать</button>
+  </form>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

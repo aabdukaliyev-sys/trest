@@ -10,7 +10,7 @@ comparison).
 and assumptions this tool encodes, and confirm results with your broker's tax
 desk or a licensed tax consultant before filing anything.
 
-## Quick start
+## Quick start (CLI)
 
 ```bash
 python3 -m tax_optimizer report \
@@ -22,6 +22,19 @@ python3 -m tax_optimizer report \
 Only `--trades` is required; `--dividends` and `--prices` are optional
 (`--prices` unlocks the optimization suggestions section, since harvesting
 needs current market values).
+
+## Web UI
+
+```bash
+pip install -r requirements.txt
+python3 -m webapp.app
+```
+
+Open http://127.0.0.1:5000/. You can either fill in trades/dividends/prices
+row by row (with add/remove-row buttons) or upload the same CSV files the CLI
+uses — a file, if selected, takes priority over that section's manual rows.
+The web app calls the exact same `tax_optimizer` package as the CLI; no
+calculation logic is duplicated in `webapp/`.
 
 ## Input format
 
